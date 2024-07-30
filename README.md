@@ -20,7 +20,7 @@ In this repository, we provide:
 - The script to plot loss and EER on the training and validation sets over the training epochs  (`read_log.py`).
 - The script to plot t-SNE representation (`tSNE.py`).
 - Pretrained TypeFormer (`pretrained/TypeFormer_pretrained.pt`) and the preliminary Transformer (`pretrained/preliminary_transformer_pretrained.pt`).
-- The [preprocessed data]() on which we perform the experiments should be placed in `data/`. 
+- The [preprocessed data]() on which we perform the experiments should be placed in `data/`. The data is available [here](https://dauam-my.sharepoint.com/:f:/g/personal/giuseppe_stragapede_estudiante_uam_es/EgAlw3C_F-NKorsjujybqq8Bo-60l7sr74E6lqg3aqSVrw?e=dfU96M).
 
 # References
 
