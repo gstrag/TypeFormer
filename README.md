@@ -16,11 +16,13 @@ The model was developed from the following sources:
 In this repository, we provide:
 - The source code for TypeFormer [\[1\]](https://ieeexplore.ieee.org/abstract/document/10042710), and for the preliminary Transformer in [\[2\]](https://ieeexplore.ieee.org/abstract/document/10042710) in `model/Model.py` and in `model/Preliminary.py`.
 - The scripts to train (`train.py`) and evaluate (`test.py`) said models on the [Aalto Mobile Keystroke Database](https://userinterfaces.aalto.fi/typing37k/resources/Mobile_typing_study.pdf).
+- The scripts to train (`KVC_train.py`) and evaluate (`KVC_test.py`) said models on the [Keystroke Verification Competition (KVC)](https://github.com/gstrag/Keystroke-Verification-Challenge) .
 - The script to plot DET curves (`plot_DET.py`).
 - The script to plot loss and EER on the training and validation sets over the training epochs  (`read_log.py`).
 - The script to plot t-SNE representation (`tSNE.py`).
 - Pretrained TypeFormer (`pretrained/TypeFormer_pretrained.pt`) and the preliminary Transformer (`pretrained/preliminary_transformer_pretrained.pt`).
-- The [preprocessed data]() on which we perform the experiments should be placed in `data/`. 
+- For the protocol adopted in the original papers [1, 2], adopted in the scripts `train.py` and `test.py` the preprocessed data on which we perform the experiments should be placed in `data/`. Get in touch with the authors to get access to the data.
+- For the protocol adopted in the KVC, the data should be downloaded from [CodaLab](https://codalab.lisn.upsaclay.fr/competitions/14063) after joining the competition. The data should be placed in `../../databases/KVC_data/`. This directory is specified in the variable `configs.data_dir` in the `utils/KVC_config.py` script and it can be modified. We recommend this approach over the original experimental protocol.
 
 # References
 

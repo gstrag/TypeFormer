@@ -17,19 +17,19 @@ os.makedirs(test_configs.results_dir, exist_ok=True)
 
 TransformerModel = HARTrans(configs).double()
 
-keystroke_dataset = list(np.load(test_configs.db_filename, allow_pickle=True))
+keystroke_dataset = np.load(test_configs.db_filename, allow_pickle=True)
 
 TransformerModel.load_state_dict(torch.load(configs.model_filename))
 TransformerModel.eval()
 
 ds_e = KeystrokeSessionTriplet(keystroke_dataset[test_configs.num_validation_subjects:test_configs.num_validation_subjects+test_configs.num_test_subjects], length=test_configs.num_test_subjects, db=test_configs.db)
-testing_dataloader = DataLoader(ds_e, batch_size=1, shuffle=False)
+
 
 TransformerModel = TransformerModel.to(device)
 
 
 embeddings = {}
-for user in range(len(testing_dataloader)):
+for user in range(len(ds_e)):
     embeddings[str(user)] = {}
     print("Computing embeddings for user " + str(user))
     for enrolment_session in range(test_configs.total_num_sessions):

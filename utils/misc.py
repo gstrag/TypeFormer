@@ -94,3 +94,23 @@ class KeystrokeSessionTriplet():
 
     def __len__(self):
         return self.len
+
+
+def extract_test_keystroke_features(session_1, sequence_length=100):
+    hold_time_1 = np.reshape((session_1[:, 1] - session_1[:, 0]) / 1e3, (np.shape(session_1)[0], 1)).astype(
+        np.float32)
+    inter_press_1 = np.reshape(np.append(0, np.diff(session_1[:, 0])) / 1e3,
+                               (np.shape(session_1)[0], 1)).astype(np.float32)
+    inter_release_1 = np.reshape(np.append(0, np.diff(session_1[:, 1])) / 1e3,
+                                 (np.shape(session_1)[0], 1)).astype(np.float32)
+    inter_key_1 = np.reshape(np.append(0, session_1[:-1, 1] - session_1[1:, 0]) / 1e3,
+                             (np.shape(session_1)[0], 1)).astype(np.float32)
+    # ascii_1 = np.reshape(session_1[:, 2] / 256, (np.shape(session_1)[0], 1)).astype(np.float32)
+    # session_1_processed = np.concatenate(
+   #     (hold_time_1, inter_press_1, inter_release_1, inter_key_1, ascii_1), axis=1)
+    session_1_processed = np.concatenate(
+        (hold_time_1, inter_press_1, inter_release_1, inter_key_1), axis=1)
+    session_1_processed = np.concatenate(
+        (session_1_processed, np.zeros((sequence_length, np.shape(session_1_processed)[1]))))[
+                          :sequence_length]
+    return session_1_processed

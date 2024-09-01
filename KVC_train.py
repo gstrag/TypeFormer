@@ -3,46 +3,69 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from utils.misc import KeystrokeSessionTriplet
-from utils.train_config import configs
-from utils.misc import compute_eer, TripletLoss
-
+from utils.KVC_training import KeystrokeSessionTriplet
+import random
 import time
+from model.Model import HARTrans
 
+from utils.misc import compute_eer, TripletLoss
+from utils.KVC_config import configs
 
-from model.Preliminary import HARTrans
+from utils.KVC_training import preprocess
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device:", device)
 
 os.makedirs(configs.base_dir, exist_ok=True)
+os.makedirs(configs.preprocessed_dir, exist_ok=True)
+os.makedirs(configs.model_dir, exist_ok=True)
+os.makedirs(configs.log_dir, exist_ok=True)
 
 # Saving specific config file for reproducibility
-with open('utils/train_config.py') as f:
+with open('utils/KVC_config.py') as f:
     data = f.read()
     f.close()
-with open(configs.base_dir + "experimental_config.txt", mode="w") as f:
+with open(configs.config_log_dir + "experimental_config.txt", mode="w") as f:
     f.write(data)
     f.close()
 
-keystroke_dataset = list(np.load(configs.main_db, allow_pickle=True))
+try:
+    keystroke_dataset = np.load(configs.preprocessed_dir + '{}_processed_{}.npy'.format(configs.scenario, configs.experiment_name), allow_pickle=True).item()
+except:
+    preprocess(configs.dev_data_dir, configs.scenario, configs.experiment_name, configs.preprocessed_dir, sequence_length=configs.sequence_length)
+    keystroke_dataset = np.load(configs.preprocessed_dir + '{}_processed_{}.npy'.format(configs.scenario, configs.experiment_name), allow_pickle=True).item()
 
-ds_t = KeystrokeSessionTriplet(keystroke_dataset[configs.num_training_subjects:2*configs.num_training_subjects], data_length=configs.sequence_length, length=len(keystroke_dataset))
-ds_v = KeystrokeSessionTriplet(keystroke_dataset[:configs.num_validation_subjects], data_length=configs.sequence_length, length=len(keystroke_dataset))
+
+total_users = len(list(keystroke_dataset.keys()))
+validation_users = int(total_users*0.2)
+
+val_dataset_keys = random.sample(list(keystroke_dataset.keys()), validation_users)
+train_dataset_keys = [x for x in list(keystroke_dataset.keys()) if x not in val_dataset_keys]
+
+train_dataset = {x:keystroke_dataset[x] for x in train_dataset_keys}
+val_dataset = {x:keystroke_dataset[x] for x in val_dataset_keys}
+
+del keystroke_dataset
+
+ds_t = KeystrokeSessionTriplet(train_dataset, train_dataset_keys, data_length=configs.sequence_length, dimension=configs.dimensionality, samples_considered_per_epoch=configs.batches_per_epoch*configs.batch_size_train)
+ds_v = KeystrokeSessionTriplet(val_dataset, val_dataset_keys, data_length=configs.sequence_length, dimension=configs.dimensionality, samples_considered_per_epoch=configs.val_batches_per_epoch*configs.batch_size_val)
 
 train_dataloader = DataLoader(ds_t, batch_size=configs.batch_size_train, shuffle=True)
 val_dataloader = DataLoader(ds_v, batch_size=configs.batch_size_val, shuffle=True)
 
+
 TransformerModel = HARTrans(configs).double()
+
 
 optimizer = torch.optim.Adam(TransformerModel.parameters(), lr=0.001, betas=(0.9, 0.999))
 TransformerModel = TransformerModel.to(device)
 criterion = torch.jit.script(TripletLoss())
 
 
-def inner_ops(input_):
-    optimizer.zero_grad()
+def inner_ops(input_, mode='train'):
+    if mode == 'train':
+        optimizer.zero_grad()
     anchor_sgm, positive_sgm, negative_sgm = (Variable(input_[0]).to(device),
                                               Variable(input_[1]).to(device),
                                               Variable(input_[2]).to(device))
@@ -50,8 +73,9 @@ def inner_ops(input_):
                                               TransformerModel(positive_sgm),
                                               TransformerModel(negative_sgm))
     loss = criterion(anchor_out, positive_out, negative_out)
-    loss.backward(retain_graph=True)
-    optimizer.step()
+    if mode == 'train':
+        loss.backward(retain_graph=True)
+        optimizer.step()
     running_loss = np.round(loss.item(), configs.decimals)
     pred_a, pred_p, pred_n = (np.round(anchor_out.cpu().detach().numpy(), configs.decimals),
                               np.round(positive_out.cpu().detach().numpy(), configs.decimals),
@@ -81,7 +105,7 @@ def eval_one_epoch():
     total_loss_per_epoch = 0.
     TransformerModel.eval()
     for i, (anchor_sgm, positive_sgm, negative_sgm) in enumerate(val_dataloader, 0):
-        eer_, running_loss_ = inner_ops((anchor_sgm, positive_sgm, negative_sgm))
+        eer_, running_loss_ = inner_ops((anchor_sgm, positive_sgm, negative_sgm), mode='eval')
         epoch_eers.append(eer_)
         total_loss_per_epoch = total_loss_per_epoch + running_loss_
     mean_eer = np.round(np.mean(epoch_eers), configs.decimals)
@@ -125,3 +149,4 @@ for epoch in range(configs.epochs):
         output.write(str(log_list))
 
 print('\nBest Validation EER: %.2f%%, in epoch: %.d' % (best_eer_v, best_epoch))
+
